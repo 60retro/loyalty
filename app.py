@@ -11,12 +11,11 @@ SHEET_NAME = 'Loyalty_Points_Data'
 
 st.set_page_config(page_title="Nami Loyalty", page_icon="☕", layout="centered")
 
-# --- เชื่อมต่อ Google Sheet ---
+# --- ฟังก์ชันเชื่อมต่อ Google Sheet ---
 @st.cache_resource
 def init_connection():
     scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
     
-    # โหลดจาก Secrets (Cloud) หรือ JSON (Local)
     if "gcp_service_account" in st.secrets:
         creds_dict = dict(st.secrets["gcp_service_account"])
         creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
@@ -24,7 +23,7 @@ def init_connection():
         try:
             creds = ServiceAccountCredentials.from_json_keyfile_name('service_account.json', scope)
         except:
-            st.error("ไม่พบไฟล์ Key (service_account.json) หรือ Secrets")
+            st.error("❌ ไม่พบไฟล์ Key (service_account.json) หรือ Secrets")
             st.stop()
             
     client = gspread.authorize(creds)
@@ -39,9 +38,10 @@ except Exception as e:
 
 # ================= ส่วนการทำงานหลัก =================
 
-# เช็ค Mode (ลูกค้า vs ร้านค้า)
+# รับค่าจาก URL
 query_params = st.query_params
 points_param = query_params.get("points", None)
+table_param = query_params.get("table", "-") # รับค่าโต๊ะจาก URL
 
 # --- 🟢 โหมดลูกค้า (Customer) ---
 if points_param:
@@ -50,29 +50,37 @@ if points_param:
         """, unsafe_allow_html=True)
 
     st.markdown("<h1>🍃 Nami Member</h1>", unsafe_allow_html=True)
-    st.info(f"🎉 คุณได้รับคะแนนสะสม: **{points_param} แต้ม**")
     
-    with st.form("customer_form"):
-        # เพิ่มช่องกรอกเลขโต๊ะ (ถ้าลูกค้าสแกนที่โต๊ะ)
-        table_no = st.text_input("หมายเลขโต๊ะ (Table No.)", placeholder="เช่น 10")
-        phone = st.text_input("📱 เบอร์โทรศัพท์สมาชิก", placeholder="กรอกเบอร์โทรศัพท์ 10 หลัก", max_chars=10)
+    with st.container():
+        st.write("---")
+        # แสดงข้อมูล (แก้ไขไม่ได้)
+        col1, col2 = st.columns(2)
+        with col1:
+            st.info(f"📍 โต๊ะที่: **{table_param}**")
+        with col2:
+            st.info(f"🎁 คะแนน: **{points_param} แต้ม**")
         
-        submitted = st.form_submit_button("สะสมแต้มทันที", use_container_width=True)
-        
-        if submitted:
-            if len(phone) < 9:
-                st.warning("กรุณากรอกเบอร์โทรศัพท์ให้ถูกต้อง")
-            else:
-                try:
-                    timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
-                    # บันทึก: Timestamp, Table, Phone, Points, Status
-                    # (ต้องตรงกับลำดับใน Google Sheet A,B,C,D,E)
-                    sheet.append_row([timestamp, table_no, phone, points_param, "รอตรวจสอบ"])
-                    st.balloons()
-                    st.success("✅ บันทึกคะแนนเรียบร้อยแล้ว!")
-                    time.sleep(2)
-                except Exception as e:
-                    st.error(f"เกิดข้อผิดพลาด: {e}")
+        with st.form("customer_form"):
+            st.caption("กรุณากรอกเบอร์โทรศัพท์เพื่อสะสมแต้ม")
+            phone = st.text_input("📱 เบอร์โทรศัพท์", placeholder="08xxxxxxxx", max_chars=10)
+            
+            submitted = st.form_submit_button("ยืนยันการสะสมแต้ม", use_container_width=True)
+            
+            if submitted:
+                if len(phone) < 9 or not phone.isdigit():
+                    st.warning("กรุณากรอกเบอร์โทรศัพท์ให้ถูกต้อง (ตัวเลขเท่านั้น)")
+                else:
+                    try:
+                        timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
+                        # บันทึกข้อมูลลง Sheet (เรียงตามคอลัมน์ A, B, C, D, E)
+                        # A=Timestamp, B=Table, C=Phone, D=Points, E=Status
+                        sheet.append_row([timestamp, table_param, phone, points_param, "รอตรวจสอบ"])
+                        
+                        st.balloons()
+                        st.success("✅ บันทึกคะแนนเรียบร้อยแล้ว!")
+                        time.sleep(3)
+                    except Exception as e:
+                        st.error(f"เกิดข้อผิดพลาด: {e}")
 
 # --- 🔵 โหมดร้านค้า (Admin) ---
 else:
@@ -82,7 +90,8 @@ else:
         st.header("Login")
         password = st.text_input("รหัสผ่านร้าน", type="password")
         st.markdown("---")
-        base_url = st.text_input("URL ของเว็บนี้", value="https://loyalty.streamlit.app") # <-- แก้เป็นลิงก์จริงของคุณ
+        # แก้เป็นลิงก์จริงของคุณที่นี่ได้เลย จะได้ไม่ต้องพิมพ์ใหม่
+        base_url = st.text_input("URL ของเว็บนี้", value="https://loyalty.streamlit.app")
 
     if password != "3457":
         st.warning("กรุณาใส่รหัสผ่านร้าน")
@@ -91,77 +100,99 @@ else:
     tab1, tab2 = st.tabs(["🖨️ สร้าง QR Code", "📋 ตรวจสอบยอด"])
 
     with tab1:
-        st.subheader("สร้าง QR ให้ลูกค้า")
-        pts = st.number_input("คะแนนที่จะให้", min_value=1, value=100, step=10)
-        if st.button("Generate QR", use_container_width=True):
+        st.subheader("สร้าง QR ให้ลูกค้าสแกน")
+        col_a, col_b = st.columns(2)
+        
+        with col_a:
+            pts = st.number_input("คะแนน (Points)", min_value=1, value=100, step=10)
+        with col_b:
+            # เพิ่มช่องใส่เลขโต๊ะตรงนี้ (Admin เป็นคนใส่)
+            tbl = st.text_input("เลขโต๊ะ (Table No.)", value="10")
+
+        if st.button("สร้าง QR Code", use_container_width=True):
             clean_url = base_url.rstrip("/")
-            target_url = f"{clean_url}?points={pts}"
+            # ฝังทั้ง points และ table ลงไปในลิงก์
+            target_url = f"{clean_url}?points={pts}&table={tbl}"
             
             qr = qrcode.QRCode(box_size=10, border=2)
             qr.add_data(target_url)
             qr.make(fit=True)
             img = qr.make_image(fill_color="black", back_color="white")
+            
             st.image(img.get_image(), width=300)
+            st.success(f"QR สำหรับโต๊ะ {tbl} (ยอด {pts} แต้ม) สร้างเสร็จแล้ว")
 
     with tab2:
         st.subheader("รายการรอยืนยัน")
-        if st.button("🔄 รีเฟรชข้อมูล"):
-            st.cache_resource.clear() # ล้าง cache อัตโนมัติเมื่อกดปุ่ม
+        if st.button("🔄 รีเฟรชข้อมูล (ล้าง Cache)"):
+            st.cache_resource.clear()
             st.rerun()
 
         try:
-            data = sheet.get_all_records()
-            df = pd.DataFrame(data)
-        except:
-            st.error("อ่านข้อมูลไม่ได้ ตรวจสอบหัวตาราง Google Sheet")
-            st.stop()
+            # เปลี่ยนวิธีดึงข้อมูล: ดึงมาทั้งหมดแบบดิบๆ (Values) แล้วตั้งชื่อหัวตารางเอง
+            raw_data = sheet.get_all_values()
             
-        # ตรวจสอบว่ามีข้อมูลและมี Column ครบไหม
-        required_cols = ['Status', 'Phone', 'Points', 'Table', 'Timestamp']
-        # แปลงหัวตารางใน df เป็น set เพื่อเช็ค (เผื่อลำดับสลับกัน)
-        missing = [c for c in required_cols if c not in df.columns]
-
-        if missing:
-            st.warning(f"⚠️ ไม่พบหัวตาราง: {missing}")
-            st.info("คำแนะนำ: ไปที่ Google Sheet แล้วแก้ชื่อหัวตารางให้ตรงเป๊ะๆ (ระวังการเว้นวรรค)")
-            st.write("หัวตารางที่โปรแกรมเห็นตอนนี้:", df.columns.tolist())
-        
-        elif not df.empty:
-            df['Status'] = df['Status'].astype(str)
-            pending = df[df['Status'].str.upper() != 'TRUE'].copy()
-            
-            if not pending.empty:
-                pending.insert(0, "Approved", False)
+            if len(raw_data) > 1:
+                # บรรทัดแรกคือ Header, บรรทัดที่เหลือคือ Data
+                headers = raw_data[0]
+                rows = raw_data[1:]
                 
-                # แสดงตารางแบบใหม่ (รองรับช่อง Table)
-                edited = st.data_editor(
-                    pending,
-                    column_config={
-                        "Approved": st.column_config.CheckboxColumn("เลือก", default=False),
-                        "Timestamp": "เวลา",
-                        "Table": "โต๊ะ",    # <--- เพิ่มตรงนี้
-                        "Phone": "เบอร์โทร",
-                        "Points": "แต้ม",
-                        "Status": "สถานะ"
-                    },
-                    disabled=["Timestamp", "Table", "Phone", "Points", "Status"],
-                    hide_index=True,
-                    use_container_width=True
-                )
+                # สร้าง DataFrame
+                df = pd.DataFrame(rows, columns=headers)
                 
-                if st.button("✅ บันทึกรายการที่เลือก"):
-                    to_process = edited[edited['Approved'] == True]
-                    count = 0
-                    for index, row in to_process.iterrows():
-                        real_idx = df.index[df['Timestamp'] == row['Timestamp']].tolist()
-                        if real_idx:
-                            row_num = real_idx[0] + 2
-                            col_idx = df.columns.get_loc("Status") + 1
-                            sheet.update_cell(row_num, col_idx, "TRUE")
-                            count += 1
+                # --- แก้ปัญหา Header ไม่ตรง (Trim spaces) ---
+                # ลบช่องว่างหน้าหลังชื่อหัวตารางออกทั้งหมด
+                df.columns = [c.strip() for c in df.columns]
+                
+                # ตรวจสอบว่ามี Column ครบไหม (ตอนนี้ไม่สน Case เล็กใหญ่)
+                # เราคาดหวัง: Timestamp, Table, Phone, Points, Status
+                
+                # กรองเอาเฉพาะที่ยังไม่ Done (Status != TRUE)
+                # หา Column Status ให้เจอ (ไม่ว่าจะพิมพ์ตัวเล็กตัวใหญ่)
+                status_col = next((c for c in df.columns if c.lower() == 'status'), None)
+                
+                if status_col:
+                    pending = df[df[status_col].astype(str).str.upper() != 'TRUE'].copy()
                     
-                    st.success(f"บันทึกแล้ว {count} รายการ")
-                    time.sleep(1)
-                    st.rerun()
+                    if not pending.empty:
+                        pending.insert(0, "Approved", False)
+                        
+                        edited = st.data_editor(
+                            pending,
+                            use_container_width=True,
+                            hide_index=True,
+                            column_config={
+                                "Approved": st.column_config.CheckboxColumn("เลือก", default=False)
+                            }
+                        )
+                        
+                        if st.button("✅ บันทึกรายการที่เลือก"):
+                            to_process = edited[edited['Approved'] == True]
+                            count = 0
+                            for index, row in to_process.iterrows():
+                                # หา row ใน sheet จริง โดยใช้ Timestamp (Column A) เป็นตัวเทียบ
+                                ts_val = row.get('Timestamp') # ต้องมั่นใจว่าชื่อ Column ใน Sheet คือ Timestamp
+                                
+                                # ค้นหา Cell ใน Column A ที่ตรงกับ timestamp
+                                try:
+                                    cell = sheet.find(str(ts_val), in_column=1)
+                                    if cell:
+                                        # อัปเดต Column E (Status) -> แถวที่ cell.row, คอลัมน์ 5
+                                        sheet.update_cell(cell.row, 5, "TRUE")
+                                        count += 1
+                                except:
+                                    pass
+                                    
+                            st.success(f"บันทึกแล้ว {count} รายการ")
+                            time.sleep(1)
+                            st.cache_resource.clear()
+                            st.rerun()
+                    else:
+                        st.info("✅ ไม่มียอดค้าง ตรวจสอบครบแล้ว")
+                else:
+                    st.error(f"ไม่พบหัวตารางชื่อ 'Status' (พบแต่: {df.columns.tolist()})")
             else:
-                st.info("✅ ไม่มียอดค้าง ตรวจสอบครบแล้ว")
+                st.warning("ยังไม่มีข้อมูลใน Google Sheet")
+
+        except Exception as e:
+            st.error(f"เกิดข้อผิดพลาดในการอ่านข้อมูล: {e}")
