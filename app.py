@@ -41,39 +41,86 @@ except Exception as e:
 # รับค่าจาก URL
 query_params = st.query_params
 points_param = query_params.get("points", None)
-table_param = query_params.get("table", "-") # รับค่าโต๊ะจาก URL
+table_param = query_params.get("table", "-")
 
 # --- 🟢 โหมดลูกค้า (Customer) ---
 if points_param:
+    # --- CSS แก้ไขใหม่: พื้นขาว ตัวหนังสือดำหนา ---
     st.markdown("""
-        <style>.stApp { background-color: #f0f2f6; } h1 { color: #4CAF50; text-align: center; }</style>
+        <style>
+        /* บังคับพื้นหลังสีขาว */
+        .stApp {
+            background-color: #FFFFFF !important;
+        }
+        
+        /* บังคับตัวหนังสือทุกอย่างเป็นสีดำและตัวหนา */
+        h1, h2, h3, p, div, span, label, .stMarkdown {
+            color: #000000 !important;
+            font-family: 'Sarabun', sans-serif; /* ถ้าเครื่องมีฟอนต์นี้ */
+        }
+        
+        /* หัวข้อ Nami Member */
+        h1 {
+            color: #000000 !important;
+            font-weight: 900 !important; /* หนามาก */
+            text-align: center;
+            text-transform: uppercase;
+        }
+        
+        /* กล่องข้อความ (Alert/Info) ให้ตัวหนังสือชัด */
+        .stAlert {
+            background-color: #f0f2f6 !important;
+            color: #000000 !important;
+            border: 1px solid #ddd;
+            font-weight: bold !important;
+        }
+        
+        /* ช่องกรอกข้อมูล (Input) */
+        .stTextInput input {
+            color: #000000 !important;
+            background-color: #FFFFFF !important;
+            border: 2px solid #333 !important; /* ขอบดำให้เห็นชัด */
+            font-weight: bold !important;
+        }
+        .stTextInput label {
+            font-size: 18px !important;
+            font-weight: 800 !important;
+            color: #000000 !important;
+        }
+        
+        /* ปุ่มกด */
+        .stButton button {
+            font-weight: bold !important;
+            font-size: 18px !important;
+            background-color: #000000 !important; /* ปุ่มสีดำ */
+            color: #FFFFFF !important; /* ตัวหนังสือขาว */
+        }
+        </style>
         """, unsafe_allow_html=True)
 
     st.markdown("<h1>🍃 Nami Member</h1>", unsafe_allow_html=True)
     
     with st.container():
         st.write("---")
-        # แสดงข้อมูล (แก้ไขไม่ได้)
+        
         col1, col2 = st.columns(2)
         with col1:
-            st.info(f"📍 โต๊ะที่: **{table_param}**")
+            st.info(f"📍 โต๊ะที่: {table_param}")
         with col2:
-            st.info(f"🎁 คะแนน: **{points_param} แต้ม**")
+            st.info(f"🎁 คะแนน: {points_param} แต้ม")
         
         with st.form("customer_form"):
-            st.caption("กรุณากรอกเบอร์โทรศัพท์เพื่อสะสมแต้ม")
-            phone = st.text_input("📱 เบอร์โทรศัพท์", placeholder="08xxxxxxxx", max_chars=10)
+            st.markdown("**กรุณากรอกเบอร์โทรศัพท์เพื่อสะสมแต้ม**")
+            phone = st.text_input("เบอร์โทรศัพท์", placeholder="08xxxxxxxx", max_chars=10)
             
             submitted = st.form_submit_button("ยืนยันการสะสมแต้ม", use_container_width=True)
             
             if submitted:
                 if len(phone) < 9 or not phone.isdigit():
-                    st.warning("กรุณากรอกเบอร์โทรศัพท์ให้ถูกต้อง (ตัวเลขเท่านั้น)")
+                    st.warning("❌ กรุณากรอกเบอร์โทรศัพท์ให้ถูกต้อง (ตัวเลขเท่านั้น)")
                 else:
                     try:
                         timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
-                        # บันทึกข้อมูลลง Sheet (เรียงตามคอลัมน์ A, B, C, D, E)
-                        # A=Timestamp, B=Table, C=Phone, D=Points, E=Status
                         sheet.append_row([timestamp, table_param, phone, points_param, "รอตรวจสอบ"])
                         
                         st.balloons()
@@ -90,7 +137,7 @@ else:
         st.header("Login")
         password = st.text_input("รหัสผ่านร้าน", type="password")
         st.markdown("---")
-        # แก้เป็นลิงก์จริงของคุณที่นี่ได้เลย จะได้ไม่ต้องพิมพ์ใหม่
+        # ใส่ Link จริงของคุณตรงนี้
         base_url = st.text_input("URL ของเว็บนี้", value="https://loyalty.streamlit.app")
 
     if password != "3457":
@@ -106,12 +153,10 @@ else:
         with col_a:
             pts = st.number_input("คะแนน (Points)", min_value=1, value=100, step=10)
         with col_b:
-            # เพิ่มช่องใส่เลขโต๊ะตรงนี้ (Admin เป็นคนใส่)
             tbl = st.text_input("เลขโต๊ะ (Table No.)", value="10")
 
         if st.button("สร้าง QR Code", use_container_width=True):
             clean_url = base_url.rstrip("/")
-            # ฝังทั้ง points และ table ลงไปในลิงก์
             target_url = f"{clean_url}?points={pts}&table={tbl}"
             
             qr = qrcode.QRCode(box_size=10, border=2)
@@ -120,7 +165,7 @@ else:
             img = qr.make_image(fill_color="black", back_color="white")
             
             st.image(img.get_image(), width=300)
-            st.success(f"QR สำหรับโต๊ะ {tbl} (ยอด {pts} แต้ม) สร้างเสร็จแล้ว")
+            st.success(f"QR โต๊ะ {tbl} ({pts} แต้ม) เสร็จแล้ว")
 
     with tab2:
         st.subheader("รายการรอยืนยัน")
@@ -129,26 +174,16 @@ else:
             st.rerun()
 
         try:
-            # เปลี่ยนวิธีดึงข้อมูล: ดึงมาทั้งหมดแบบดิบๆ (Values) แล้วตั้งชื่อหัวตารางเอง
             raw_data = sheet.get_all_values()
             
             if len(raw_data) > 1:
-                # บรรทัดแรกคือ Header, บรรทัดที่เหลือคือ Data
                 headers = raw_data[0]
                 rows = raw_data[1:]
-                
-                # สร้าง DataFrame
                 df = pd.DataFrame(rows, columns=headers)
                 
-                # --- แก้ปัญหา Header ไม่ตรง (Trim spaces) ---
-                # ลบช่องว่างหน้าหลังชื่อหัวตารางออกทั้งหมด
+                # Trim spaces
                 df.columns = [c.strip() for c in df.columns]
                 
-                # ตรวจสอบว่ามี Column ครบไหม (ตอนนี้ไม่สน Case เล็กใหญ่)
-                # เราคาดหวัง: Timestamp, Table, Phone, Points, Status
-                
-                # กรองเอาเฉพาะที่ยังไม่ Done (Status != TRUE)
-                # หา Column Status ให้เจอ (ไม่ว่าจะพิมพ์ตัวเล็กตัวใหญ่)
                 status_col = next((c for c in df.columns if c.lower() == 'status'), None)
                 
                 if status_col:
@@ -170,14 +205,11 @@ else:
                             to_process = edited[edited['Approved'] == True]
                             count = 0
                             for index, row in to_process.iterrows():
-                                # หา row ใน sheet จริง โดยใช้ Timestamp (Column A) เป็นตัวเทียบ
-                                ts_val = row.get('Timestamp') # ต้องมั่นใจว่าชื่อ Column ใน Sheet คือ Timestamp
-                                
-                                # ค้นหา Cell ใน Column A ที่ตรงกับ timestamp
+                                ts_val = row.get('Timestamp')
                                 try:
                                     cell = sheet.find(str(ts_val), in_column=1)
                                     if cell:
-                                        # อัปเดต Column E (Status) -> แถวที่ cell.row, คอลัมน์ 5
+                                        # อัปเดต Column 5 (Status)
                                         sheet.update_cell(cell.row, 5, "TRUE")
                                         count += 1
                                 except:
