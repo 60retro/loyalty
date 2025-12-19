@@ -5,36 +5,31 @@ import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 import pandas as pd
 import time
-import json
 
 # =================ตั้งค่าระบบ=================
-# ชื่อ Google Sheet (ต้องแชร์ให้ Service Email แล้ว)
 SHEET_NAME = 'Loyalty_Points_Data'
 
-# ตั้งค่าหน้าเว็บ
 st.set_page_config(page_title="Nami Loyalty", page_icon="☕", layout="centered")
 
-# --- ฟังก์ชันเชื่อมต่อ Google Sheet (รองรับทั้ง Local และ Cloud) ---
+# --- เชื่อมต่อ Google Sheet ---
 @st.cache_resource
 def init_connection():
     scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
     
-    # วิธีที่ 1: พยายามโหลดจาก Streamlit Secrets (สำหรับตอนเอาขึ้น Cloud)
+    # โหลด Key จาก Secrets (Cloud) หรือไฟล์ JSON (Local)
     if "gcp_service_account" in st.secrets:
         creds_dict = dict(st.secrets["gcp_service_account"])
         creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
-    # วิธีที่ 2: โหลดจากไฟล์ JSON (สำหรับรันในเครื่องตัวเอง)
     else:
         try:
             creds = ServiceAccountCredentials.from_json_keyfile_name('service_account.json', scope)
         except:
-            st.error("ไม่พบไฟล์ Key (service_account.json) หรือการตั้งค่า Secrets")
+            st.error("ไม่พบไฟล์ Key หรือ Secrets")
             st.stop()
             
     client = gspread.authorize(creds)
     return client
 
-# เชื่อมต่อ
 try:
     client = init_connection()
     sheet = client.open(SHEET_NAME).sheet1
@@ -43,20 +38,17 @@ except Exception as e:
     st.stop()
 
 # ================= ตรวจสอบโหมดการทำงาน =================
-# เช็คว่าใน URL มี parameter ชื่อ 'points' หรือไม่?
 query_params = st.query_params
 points_param = query_params.get("points", None)
+table_param = query_params.get("table", "-") # รับค่าเบอร์โต๊ะจากลิงก์ (ถ้าไม่มีให้เป็น -)
 
 # -------------------------------------------
 # 🟢 MODE 1: ลูกค้า (Customer View)
-# ทำงานเมื่อ URL มี ?points=XX
 # -------------------------------------------
 if points_param:
-    # ตกแต่งหน้าจอลูกค้าให้สวยงาม (ใส่โลโก้ร้านได้ตรงนี้)
     st.markdown("""
         <style>
         .stApp { background-color: #f0f2f6; }
-        .main-card { padding: 20px; border-radius: 10px; background-color: white; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
         h1 { color: #4CAF50; text-align: center; }
         </style>
         """, unsafe_allow_html=True)
@@ -65,12 +57,16 @@ if points_param:
     
     with st.container():
         st.write("---")
-        st.info(f"🎉 คุณได้รับคะแนนสะสม: **{points_param} แต้ม**")
-        
+        # แสดงข้อมูลให้ลูกค้าเห็น (คะแนน และ โต๊ะ)
+        col1, col2 = st.columns(2)
+        with col1:
+            st.metric("คะแนนที่ได้รับ", f"{points_param} แต้ม")
+        with col2:
+            st.metric("โต๊ะที่", f"{table_param}")
+
         with st.form("customer_form"):
             phone = st.text_input("📱 เบอร์โทรศัพท์สมาชิก", placeholder="กรอกเบอร์โทรศัพท์ 10 หลัก", max_chars=10)
             
-            # ปุ่มส่งข้อมูล
             submitted = st.form_submit_button("สะสมแต้มทันที", use_container_width=True)
             
             if submitted:
@@ -78,115 +74,120 @@ if points_param:
                     st.warning("กรุณากรอกเบอร์โทรศัพท์ให้ถูกต้อง")
                 else:
                     try:
-                        # บันทึกลง Sheet: Timestamp, Phone, Points, Status
                         timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
-                        sheet.append_row([timestamp, phone, points_param, "รอตรวจสอบ"])
+                        # บันทึกลง Sheet: Timestamp, Table, Phone, Points, Status
+                        # (ต้องตรงกับลำดับคอลัมน์ใน Sheet)
+                        sheet.append_row([timestamp, table_param, phone, points_param, "รอตรวจสอบ"])
+                        
                         st.balloons()
-                        st.success("✅ บันทึกคะแนนเรียบร้อยแล้ว! ขอบคุณที่ใช้บริการครับ")
+                        st.success("✅ บันทึกเรียบร้อย! ขอบคุณที่ใช้บริการครับ")
                         time.sleep(3)
-                        # เคลียร์หน้าจอ (หรือ Redirect)
                     except Exception as e:
                         st.error(f"เกิดข้อผิดพลาด: {e}")
 
 # -------------------------------------------
 # 🔵 MODE 2: ร้านค้า (Admin Dashboard)
-# ทำงานเมื่อไม่มี URL param (เข้าหน้าเว็บปกติ)
 # -------------------------------------------
 else:
     st.title("🛡️ Nami Manager Dashboard")
     
-    # Sidebar สำหรับใส่ Password กันคนนอกเข้า (แบบง่าย)
     with st.sidebar:
         st.header("Login")
         password = st.text_input("รหัสผ่านร้าน", type="password")
-        
-        # --- ช่องใส่ URL ของ App (สำคัญมาก!) ---
         st.markdown("---")
-        st.markdown("**ตั้งค่าลิงก์:**")
-        base_url = st.text_input("URL ของเว็บนี้ (เมื่อขึ้น Cloud)", value="http://loyalty.streamlit.app/")
-        st.caption("เช่น https://nami-loyalty.streamlit.app")
+        base_url = st.text_input("URL ของเว็บนี้", value="http://localhost:8501")
 
-    if password != "34573457": # <--- แก้รหัสผ่านตรงนี้
+    if password != "1234":
         st.warning("กรุณาใส่รหัสผ่านร้านที่ Sidebar ด้านซ้าย")
         st.stop()
 
-    # แบ่งหน้าจอ Admin
     tab1, tab2 = st.tabs(["🖨️ สร้าง QR Code", "📋 ตรวจสอบยอด"])
 
     with tab1:
-        st.subheader("สร้าง QR ให้ลูกค้า")
-        col1, col2 = st.columns([1, 2])
+        st.subheader("ออกแต้มให้ลูกค้า")
+        col1, col2 = st.columns(2)
         with col1:
-            pts = st.number_input("คะแนนที่จะให้", min_value=1, value=100, step=10)
-            if st.button("Generate QR", use_container_width=True):
-                # สร้าง Link ที่ชี้กลับมาหาตัวเอง พร้อมแนบ points
-                # ถ้า base_url ท้ายมี / ให้ลบออก
+            pts = st.number_input("จำนวนคะแนน", min_value=1, value=100, step=10)
+        with col2:
+            # เพิ่มช่องกรอกเบอร์โต๊ะ
+            tbl = st.text_input("เบอร์โต๊ะ", value="", placeholder="เช่น 5, A1")
+
+        if st.button("Generate QR", use_container_width=True):
+            if not tbl:
+                st.error("กรุณาระบุเบอร์โต๊ะ")
+            else:
                 clean_url = base_url.rstrip("/")
-                target_url = f"{clean_url}?points={pts}"
+                # แนบทั้ง points และ table ไปในลิงก์
+                target_url = f"{clean_url}?points={pts}&table={tbl}"
                 
                 qr = qrcode.QRCode(box_size=10, border=2)
                 qr.add_data(target_url)
                 qr.make(fit=True)
                 img = qr.make_image(fill_color="black", back_color="white")
                 
-                st.image(img.get_image(), width=300)
-                st.success(f"Link: {target_url}")
-                st.caption("ให้ลูกค้าสแกนรูปนี้ เพื่อเข้าหน้าสะสมแต้ม")
+                st.image(img.get_image(), width=250)
+                st.success(f"โต๊ะ: {tbl} | คะแนน: {pts}")
 
     with tab2:
         st.subheader("รายการรอยืนยัน")
         if st.button("🔄 รีเฟรชข้อมูล"):
             st.rerun()
             
-        # (ส่วนแสดงตาราง เหมือนโค้ดเดิม)
         try:
             data = sheet.get_all_records()
             df = pd.DataFrame(data)
         except:
             df = pd.DataFrame()
             
-        if not df.empty and 'Status' in df.columns:
-            # แปลงให้ Status เป็น string กัน error
-            df['Status'] = df['Status'].astype(str)
-            
-            # กรองเอาเฉพาะที่ยังไม่ TRUE
-            pending = df[df['Status'].str.upper() != 'TRUE'].copy()
-            
-            if not pending.empty:
-                pending.insert(0, "Approved", False)
-                edited = st.data_editor(
-                    pending,
-                    column_config={
-                        "Approved": st.column_config.CheckboxColumn("เลือก", default=False),
-                        "Timestamp": "เวลา",
-                        "Phone": "เบอร์โทร",
-                        "Points": "แต้ม",
-                        "Status": "สถานะ"
-                    },
-                    disabled=["Timestamp", "Phone", "Points", "Status"],
-                    hide_index=True,
-                    use_container_width=True
+        if not df.empty:
+            # --- แก้ไขเรื่องเลข 0 หาย (Force String format) ---
+            if 'Phone' in df.columns:
+                # แปลงเป็น String แล้วเติม 0 ข้างหน้าถ้ามันขาดไป (และต้องเป็นตัวเลขล้วน)
+                df['Phone'] = df['Phone'].astype(str).apply(
+                    lambda x: x.zfill(10) if x.isdigit() and len(x) < 10 else x
                 )
+
+            # ตรวจสอบว่ามีคอลัมน์ครบไหม (ถ้าเพิ่งเพิ่ม Table มาอาจจะยังไม่ error แต่ต้องดักไว้)
+            required_cols = ['Status', 'Phone', 'Points', 'Table', 'Timestamp']
+            if all(col in df.columns for col in required_cols):
                 
-                if st.button("✅ บันทึกรายการที่เลือก"):
-                    to_process = edited[edited['Approved'] == True]
-                    count = 0
-                    for index, row in to_process.iterrows():
-                        # ค้นหา row ใน df หลักเพื่อหา index ที่แท้จริง
-                        # (วิธีง่าย: ใช้ timestamp matching)
-                        real_idx = df.index[df['Timestamp'] == row['Timestamp']].tolist()
-                        if real_idx:
-                            row_num = real_idx[0] + 2
-                            # หา Column Status
-                            col_idx = df.columns.get_loc("Status") + 1
-                            sheet.update_cell(row_num, col_idx, "TRUE")
-                            count += 1
+                df['Status'] = df['Status'].astype(str)
+                pending = df[df['Status'].str.upper() != 'TRUE'].copy()
+                
+                if not pending.empty:
+                    pending.insert(0, "Approved", False)
+                    edited = st.data_editor(
+                        pending,
+                        column_config={
+                            "Approved": st.column_config.CheckboxColumn("เลือก", default=False),
+                            "Timestamp": "เวลา",
+                            "Table": "โต๊ะ",       # แสดงเบอร์โต๊ะ
+                            "Phone": "เบอร์โทร",
+                            "Points": "แต้ม",
+                            "Status": "สถานะ"
+                        },
+                        disabled=["Timestamp", "Table", "Phone", "Points", "Status"],
+                        hide_index=True,
+                        use_container_width=True
+                    )
                     
-                    st.success(f"บันทึกแล้ว {count} รายการ")
-                    time.sleep(1)
-                    st.rerun()
+                    if st.button("✅ บันทึกรายการที่เลือก"):
+                        to_process = edited[edited['Approved'] == True]
+                        count = 0
+                        for index, row in to_process.iterrows():
+                            # หา row ใน df หลัก (ใช้ Timestamp เทียบ)
+                            real_idx = df.index[df['Timestamp'] == row['Timestamp']].tolist()
+                            if real_idx:
+                                row_num = real_idx[0] + 2
+                                # หาตำแหน่งคอลัมน์ Status (เปลี่ยนตามโครงสร้างจริง)
+                                col_idx = df.columns.get_loc("Status") + 1
+                                sheet.update_cell(row_num, col_idx, "TRUE")
+                                count += 1
+                        
+                        st.success(f"บันทึกแล้ว {count} รายการ")
+                        time.sleep(1)
+                        st.rerun()
+                else:
+                    st.info("ไม่มียอดค้าง ตรวจสอบครบแล้ว")
             else:
-
-                st.info("ไม่มียอดค้าง ตรวจสอบครบแล้ว")
-
-
+                st.warning(f"หัวตารางใน Google Sheet ไม่ครบ หรือชื่อไม่ตรง (ต้องมี: {required_cols})")
