@@ -98,7 +98,7 @@ else:
     # Sidebar สำหรับใส่ Password กันคนนอกเข้า (แบบง่าย)
     with st.sidebar:
         st.header("Login")
-        password = st.text_input("รหัสผ่านร้าน", type="password")
+        password = st.text_input("รหัสผ่านร้าน", type="34573457")
         
         # --- ช่องใส่ URL ของ App (สำคัญมาก!) ---
         st.markdown("---")
@@ -186,4 +186,5 @@ else:
                     time.sleep(1)
                     st.rerun()
             else:
+
                 st.info("ไม่มียอดค้าง ตรวจสอบครบแล้ว")
