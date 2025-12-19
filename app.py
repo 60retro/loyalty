@@ -163,7 +163,7 @@ else:
         col_a, col_b = st.columns(2)
         
         with col_a:
-            pts = st.number_input("คะแนน (Points)", min_value=1, value=100, step=10)
+            pts = st.number_input("คะแนน (Points)", min_value=0, value=0, step=10)
         with col_b:
             tbl = st.text_input("เลขโต๊ะ (Table No.)", value="10")
 
@@ -237,5 +237,6 @@ else:
 
         except Exception as e:
             st.error(f"Error: {e}")
+
 
 
