@@ -103,7 +103,7 @@ else:
         # --- ช่องใส่ URL ของ App (สำคัญมาก!) ---
         st.markdown("---")
         st.markdown("**ตั้งค่าลิงก์:**")
-        base_url = st.text_input("URL ของเว็บนี้ (เมื่อขึ้น Cloud)", value="http://localhost:8501")
+        base_url = st.text_input("URL ของเว็บนี้ (เมื่อขึ้น Cloud)", value="http://loyalty.streamlit.app/")
         st.caption("เช่น https://nami-loyalty.streamlit.app")
 
     if password != "34573457": # <--- แก้รหัสผ่านตรงนี้
@@ -188,4 +188,5 @@ else:
             else:
 
                 st.info("ไม่มียอดค้าง ตรวจสอบครบแล้ว")
+
 
