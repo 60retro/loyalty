@@ -98,7 +98,7 @@ else:
     # Sidebar สำหรับใส่ Password กันคนนอกเข้า (แบบง่าย)
     with st.sidebar:
         st.header("Login")
-        password = st.text_input("รหัสผ่านร้าน", type="34573457")
+        password = st.text_input("รหัสผ่านร้าน", type="password")
         
         # --- ช่องใส่ URL ของ App (สำคัญมาก!) ---
         st.markdown("---")
@@ -106,7 +106,7 @@ else:
         base_url = st.text_input("URL ของเว็บนี้ (เมื่อขึ้น Cloud)", value="http://localhost:8501")
         st.caption("เช่น https://nami-loyalty.streamlit.app")
 
-    if password != "1234": # <--- แก้รหัสผ่านตรงนี้
+    if password != "34573457": # <--- แก้รหัสผ่านตรงนี้
         st.warning("กรุณาใส่รหัสผ่านร้านที่ Sidebar ด้านซ้าย")
         st.stop()
 
@@ -188,3 +188,4 @@ else:
             else:
 
                 st.info("ไม่มียอดค้าง ตรวจสอบครบแล้ว")
+
