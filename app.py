@@ -95,9 +95,9 @@ else:
         st.header("Login")
         password = st.text_input("รหัสผ่านร้าน", type="password")
         st.markdown("---")
-        base_url = st.text_input("URL ของเว็บนี้", value="http://localhost:8501")
+        base_url = st.text_input("URL ของเว็บนี้", value="http://loyalty.streamlit.app/")
 
-    if password != "1234":
+    if password != "34573457":
         st.warning("กรุณาใส่รหัสผ่านร้านที่ Sidebar ด้านซ้าย")
         st.stop()
 
@@ -191,3 +191,4 @@ else:
                     st.info("ไม่มียอดค้าง ตรวจสอบครบแล้ว")
             else:
                 st.warning(f"หัวตารางใน Google Sheet ไม่ครบ หรือชื่อไม่ตรง (ต้องมี: {required_cols})")
+
