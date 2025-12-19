@@ -45,7 +45,7 @@ table_param = query_params.get("table", "-")
 
 # --- 🟢 โหมดลูกค้า (Customer) ---
 if points_param:
-    # --- CSS แก้ไขใหม่ V.5 (ยาแรง) ---
+    # --- CSS แก้ไขใหม่ V.6 (แก้ตัวหนังสือในปุ่ม) ---
     st.markdown("""
         <style>
         /* 1. บังคับพื้นหลังแอปเป็นสีขาว */
@@ -53,59 +53,54 @@ if points_param:
             background-color: #FFFFFF !important;
         }
         
-        /* 2. บังคับตัวหนังสือทุกอย่างให้เป็นสีดำสนิท */
+        /* 2. บังคับตัวหนังสือทั่วไปให้เป็นสีดำ (ยกเว้นในปุ่ม) */
         h1, h2, h3, p, div, span, label, .stMarkdown, .stMarkdown p {
             color: #000000 !important;
             font-family: sans-serif;
         }
 
-        /* 3. แก้ไขกล่องกรอกข้อมูล (Input Box) ให้เด่นชัด */
-        /* พื้นหลังกล่องต้องขาว ขอบดำ ตัวหนังสือดำ */
+        /* 3. กล่องกรอกข้อมูล (Input Box) */
         div[data-baseweb="input"] {
             background-color: #FFFFFF !important;
             border: 2px solid #000000 !important;
             border-radius: 5px !important;
         }
-        input.st-ai, input.st-ah, input {
-            color: #000000 !important; /* ตัวหนังสือที่พิมพ์ */
-            background-color: #FFFFFF !important;
+        input {
+            color: #000000 !important;
             font-weight: bold !important;
             font-size: 18px !important;
-            caret-color: #000000 !important; /* สีของ cursor กระพริบ */
         }
         
-        /* 4. แก้ไขป้ายชื่อ "เบอร์โทรศัพท์" เหนือกล่อง */
+        /* 4. ป้ายชื่อ "เบอร์โทรศัพท์" */
         label[data-testid="stWidgetLabel"] {
             color: #000000 !important;
-            font-size: 18px !important;
-            font-weight: 900 !important; /* หนาพิเศษ */
+            font-size: 20px !important;
+            font-weight: 900 !important;
         }
         
-        /* 5. แก้ไขปุ่มกด (Button) */
+        /* 5. แก้ไขปุ่มกด (Button) - จุดที่แก้ไขใหม่! */
         button[kind="secondaryFormSubmit"], button[data-testid="baseButton-secondary"] {
-            background-color: #000000 !important; /* สีพื้นปุ่ม: ดำ */
-            color: #FFFFFF !important; /* สีตัวหนังสือ: ขาว */
+            background-color: #000000 !important; /* พื้นปุ่มดำ */
             border: none !important;
-            font-size: 20px !important;
-            font-weight: bold !important;
-            padding: 10px 0px !important;
             border-radius: 8px !important;
             width: 100% !important;
+            padding: 15px 0px !important;
         }
-        button:hover {
-            background-color: #333333 !important; /* สีตอนเอาเมาส์ชี้ */
+        
+        /* บังคับตัวหนังสือข้างในปุ่ม ให้เป็นสีขาวและหนา */
+        button[kind="secondaryFormSubmit"] *, button[data-testid="baseButton-secondary"] * {
             color: #FFFFFF !important;
+            font-weight: 900 !important; /* หนามาก */
+            font-size: 20px !important;
         }
 
-        /* 6. ปรับแต่งกล่อง Info สีฟ้าให้ตัวหนังสือชัด */
+        /* 6. กล่อง Info สีฟ้า */
         div[data-testid="stAlert"] {
             background-color: #E3F2FD !important;
             border: 1px solid #90CAF9 !important;
-            color: #0D47A1 !important;
         }
         div[data-testid="stAlert"] p {
             color: #0D47A1 !important;
-            font-weight: bold !important;
         }
         </style>
         """, unsafe_allow_html=True)
@@ -115,22 +110,20 @@ if points_param:
     with st.container():
         st.write("---")
         
-        # กล่องแสดงข้อมูล (Table & Points)
         col1, col2 = st.columns(2)
         with col1:
             st.info(f"📍 โต๊ะที่: {table_param}")
         with col2:
             st.info(f"🎁 คะแนน: {points_param} แต้ม")
         
-        st.markdown("<br>", unsafe_allow_html=True) # เว้นบรรทัด
+        st.markdown("<br>", unsafe_allow_html=True)
         
         with st.form("customer_form"):
-            st.markdown("### 📱 กรุณากรอกเบอร์โทรศัพท์")
+            st.markdown("### 📱 กรุณากรอกเบอร์โทรศัพท์สมาชิก")
             
-            # ช่องกรอกเบอร์
             phone = st.text_input("เบอร์โทรศัพท์", placeholder="เช่น 0812345678", label_visibility="collapsed")
             
-            st.markdown("<br>", unsafe_allow_html=True) # เว้นบรรทัดก่อนปุ่ม
+            st.markdown("<br>", unsafe_allow_html=True)
             
             # ปุ่มกด
             submitted = st.form_submit_button("✅ ยืนยันการสะสมแต้ม", use_container_width=True)
@@ -157,10 +150,9 @@ else:
         st.header("Login")
         password = st.text_input("รหัสผ่านร้าน", type="password")
         st.markdown("---")
-        # ใส่ Link จริงของคุณตรงนี้
         base_url = st.text_input("URL ของเว็บนี้", value="https://loyalty.streamlit.app")
 
-    if password != "1234":
+    if password != "3457":
         st.warning("กรุณาใส่รหัสผ่านร้าน")
         st.stop()
 
@@ -200,8 +192,6 @@ else:
                 headers = raw_data[0]
                 rows = raw_data[1:]
                 df = pd.DataFrame(rows, columns=headers)
-                
-                # Trim spaces
                 df.columns = [c.strip() for c in df.columns]
                 
                 status_col = next((c for c in df.columns if c.lower() == 'status'), None)
@@ -241,9 +231,9 @@ else:
                     else:
                         st.info("✅ ไม่มียอดค้าง ตรวจสอบครบแล้ว")
                 else:
-                    st.error(f"ไม่พบหัวตารางชื่อ 'Status' (พบแต่: {df.columns.tolist()})")
+                    st.error("ไม่พบหัวตาราง Status")
             else:
-                st.warning("ยังไม่มีข้อมูลใน Google Sheet")
+                st.warning("ยังไม่มีข้อมูล")
 
         except Exception as e:
-            st.error(f"เกิดข้อผิดพลาดในการอ่านข้อมูล: {e}")
+            st.error(f"Error: {e}")
