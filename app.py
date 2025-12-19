@@ -45,55 +45,67 @@ table_param = query_params.get("table", "-")
 
 # --- 🟢 โหมดลูกค้า (Customer) ---
 if points_param:
-    # --- CSS แก้ไขใหม่: พื้นขาว ตัวหนังสือดำหนา ---
+    # --- CSS แก้ไขใหม่ V.5 (ยาแรง) ---
     st.markdown("""
         <style>
-        /* บังคับพื้นหลังสีขาว */
+        /* 1. บังคับพื้นหลังแอปเป็นสีขาว */
         .stApp {
             background-color: #FFFFFF !important;
         }
         
-        /* บังคับตัวหนังสือทุกอย่างเป็นสีดำและตัวหนา */
-        h1, h2, h3, p, div, span, label, .stMarkdown {
+        /* 2. บังคับตัวหนังสือทุกอย่างให้เป็นสีดำสนิท */
+        h1, h2, h3, p, div, span, label, .stMarkdown, .stMarkdown p {
             color: #000000 !important;
-            font-family: 'Sarabun', sans-serif; /* ถ้าเครื่องมีฟอนต์นี้ */
+            font-family: sans-serif;
         }
-        
-        /* หัวข้อ Nami Member */
-        h1 {
-            color: #000000 !important;
-            font-weight: 900 !important; /* หนามาก */
-            text-align: center;
-            text-transform: uppercase;
-        }
-        
-        /* กล่องข้อความ (Alert/Info) ให้ตัวหนังสือชัด */
-        .stAlert {
-            background-color: #f0f2f6 !important;
-            color: #000000 !important;
-            border: 1px solid #ddd;
-            font-weight: bold !important;
-        }
-        
-        /* ช่องกรอกข้อมูล (Input) */
-        .stTextInput input {
-            color: #000000 !important;
+
+        /* 3. แก้ไขกล่องกรอกข้อมูล (Input Box) ให้เด่นชัด */
+        /* พื้นหลังกล่องต้องขาว ขอบดำ ตัวหนังสือดำ */
+        div[data-baseweb="input"] {
             background-color: #FFFFFF !important;
-            border: 2px solid #333 !important; /* ขอบดำให้เห็นชัด */
-            font-weight: bold !important;
+            border: 2px solid #000000 !important;
+            border-radius: 5px !important;
         }
-        .stTextInput label {
+        input.st-ai, input.st-ah, input {
+            color: #000000 !important; /* ตัวหนังสือที่พิมพ์ */
+            background-color: #FFFFFF !important;
+            font-weight: bold !important;
             font-size: 18px !important;
-            font-weight: 800 !important;
-            color: #000000 !important;
+            caret-color: #000000 !important; /* สีของ cursor กระพริบ */
         }
         
-        /* ปุ่มกด */
-        .stButton button {
-            font-weight: bold !important;
+        /* 4. แก้ไขป้ายชื่อ "เบอร์โทรศัพท์" เหนือกล่อง */
+        label[data-testid="stWidgetLabel"] {
+            color: #000000 !important;
             font-size: 18px !important;
-            background-color: #000000 !important; /* ปุ่มสีดำ */
-            color: #FFFFFF !important; /* ตัวหนังสือขาว */
+            font-weight: 900 !important; /* หนาพิเศษ */
+        }
+        
+        /* 5. แก้ไขปุ่มกด (Button) */
+        button[kind="secondaryFormSubmit"], button[data-testid="baseButton-secondary"] {
+            background-color: #000000 !important; /* สีพื้นปุ่ม: ดำ */
+            color: #FFFFFF !important; /* สีตัวหนังสือ: ขาว */
+            border: none !important;
+            font-size: 20px !important;
+            font-weight: bold !important;
+            padding: 10px 0px !important;
+            border-radius: 8px !important;
+            width: 100% !important;
+        }
+        button:hover {
+            background-color: #333333 !important; /* สีตอนเอาเมาส์ชี้ */
+            color: #FFFFFF !important;
+        }
+
+        /* 6. ปรับแต่งกล่อง Info สีฟ้าให้ตัวหนังสือชัด */
+        div[data-testid="stAlert"] {
+            background-color: #E3F2FD !important;
+            border: 1px solid #90CAF9 !important;
+            color: #0D47A1 !important;
+        }
+        div[data-testid="stAlert"] p {
+            color: #0D47A1 !important;
+            font-weight: bold !important;
         }
         </style>
         """, unsafe_allow_html=True)
@@ -103,21 +115,29 @@ if points_param:
     with st.container():
         st.write("---")
         
+        # กล่องแสดงข้อมูล (Table & Points)
         col1, col2 = st.columns(2)
         with col1:
             st.info(f"📍 โต๊ะที่: {table_param}")
         with col2:
             st.info(f"🎁 คะแนน: {points_param} แต้ม")
         
+        st.markdown("<br>", unsafe_allow_html=True) # เว้นบรรทัด
+        
         with st.form("customer_form"):
-            st.markdown("**กรุณากรอกเบอร์โทรศัพท์เพื่อสะสมแต้ม**")
-            phone = st.text_input("เบอร์โทรศัพท์", placeholder="08xxxxxxxx", max_chars=10)
+            st.markdown("### 📱 กรุณากรอกเบอร์โทรศัพท์")
             
-            submitted = st.form_submit_button("ยืนยันการสะสมแต้ม", use_container_width=True)
+            # ช่องกรอกเบอร์
+            phone = st.text_input("เบอร์โทรศัพท์", placeholder="เช่น 0812345678", label_visibility="collapsed")
+            
+            st.markdown("<br>", unsafe_allow_html=True) # เว้นบรรทัดก่อนปุ่ม
+            
+            # ปุ่มกด
+            submitted = st.form_submit_button("✅ ยืนยันการสะสมแต้ม", use_container_width=True)
             
             if submitted:
                 if len(phone) < 9 or not phone.isdigit():
-                    st.warning("❌ กรุณากรอกเบอร์โทรศัพท์ให้ถูกต้อง (ตัวเลขเท่านั้น)")
+                    st.error("❌ กรุณากรอกเบอร์โทรศัพท์ให้ถูกต้อง (ตัวเลขเท่านั้น)")
                 else:
                     try:
                         timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
@@ -140,7 +160,7 @@ else:
         # ใส่ Link จริงของคุณตรงนี้
         base_url = st.text_input("URL ของเว็บนี้", value="https://loyalty.streamlit.app")
 
-    if password != "3457":
+    if password != "1234":
         st.warning("กรุณาใส่รหัสผ่านร้าน")
         st.stop()
 
@@ -209,7 +229,6 @@ else:
                                 try:
                                     cell = sheet.find(str(ts_val), in_column=1)
                                     if cell:
-                                        # อัปเดต Column 5 (Status)
                                         sheet.update_cell(cell.row, 5, "TRUE")
                                         count += 1
                                 except:
