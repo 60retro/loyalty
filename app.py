@@ -45,71 +45,55 @@ table_param = query_params.get("table", "-")
 
 # --- 🟢 โหมดลูกค้า (Customer) ---
 if points_param:
-    # --- CSS แก้ไขใหม่ V.6 (แก้ตัวหนังสือในปุ่ม) ---
+    # CSS ตกแต่ง (เหมือนเดิม)
     st.markdown("""
         <style>
-        /* 1. บังคับพื้นหลังแอปเป็นสีขาว */
-        .stApp {
-            background-color: #FFFFFF !important;
-        }
-        
-        /* 2. บังคับตัวหนังสือทั่วไปให้เป็นสีดำ (ยกเว้นในปุ่ม) */
+        .stApp { background-color: #FFFFFF !important; }
         h1, h2, h3, p, div, span, label, .stMarkdown, .stMarkdown p {
-            color: #000000 !important;
-            font-family: sans-serif;
+            color: #000000 !important; font-family: sans-serif;
         }
-
-        /* 3. กล่องกรอกข้อมูล (Input Box) */
         div[data-baseweb="input"] {
             background-color: #FFFFFF !important;
             border: 2px solid #000000 !important;
             border-radius: 5px !important;
         }
         input {
-            color: #000000 !important;
-            font-weight: bold !important;
-            font-size: 18px !important;
+            color: #000000 !important; font-weight: bold !important; font-size: 18px !important;
         }
-        
-        /* 4. ป้ายชื่อ "เบอร์โทรศัพท์" */
         label[data-testid="stWidgetLabel"] {
-            color: #000000 !important;
-            font-size: 20px !important;
-            font-weight: 900 !important;
+            color: #000000 !important; font-size: 20px !important; font-weight: 900 !important;
         }
-        
-        /* 5. แก้ไขปุ่มกด (Button) - จุดที่แก้ไขใหม่! */
         button[kind="secondaryFormSubmit"], button[data-testid="baseButton-secondary"] {
-            background-color: #000000 !important; /* พื้นปุ่มดำ */
-            border: none !important;
-            border-radius: 8px !important;
-            width: 100% !important;
-            padding: 15px 0px !important;
+            background-color: #000000 !important; border: none !important;
+            border-radius: 8px !important; width: 100% !important; padding: 15px 0px !important;
         }
-        
-        /* บังคับตัวหนังสือข้างในปุ่ม ให้เป็นสีขาวและหนา */
         button[kind="secondaryFormSubmit"] *, button[data-testid="baseButton-secondary"] * {
-            color: #FFFFFF !important;
-            font-weight: 900 !important; /* หนามาก */
-            font-size: 20px !important;
+            color: #FFFFFF !important; font-weight: 900 !important; font-size: 20px !important;
         }
-
-        /* 6. กล่อง Info สีฟ้า */
         div[data-testid="stAlert"] {
-            background-color: #E3F2FD !important;
-            border: 1px solid #90CAF9 !important;
+            background-color: #E3F2FD !important; border: 1px solid #90CAF9 !important;
         }
-        div[data-testid="stAlert"] p {
-            color: #0D47A1 !important;
-        }
+        div[data-testid="stAlert"] p { color: #0D47A1 !important; }
         </style>
         """, unsafe_allow_html=True)
 
     st.markdown("<h1>🍃 Nami Member</h1>", unsafe_allow_html=True)
+    st.write("---")
+
+    # --- เช็ค Session State ว่าเคยส่งไปหรือยัง ---
+    if 'submitted' not in st.session_state:
+        st.session_state.submitted = False
+
+    # ถ้าส่งไปแล้ว ให้แสดงหน้าขอบคุณ (และซ่อนฟอร์ม)
+    if st.session_state.submitted:
+        st.balloons()
+        st.success("✅ บันทึกข้อมูลสำเร็จ!")
+        st.info("ขอบคุณที่ใช้บริการครับ")
+        st.markdown(f"**เบอร์:** {st.session_state.get('last_phone', '-')}")
+        st.markdown(f"**ได้รับ:** {points_param} แต้ม")
     
-    with st.container():
-        st.write("---")
-        
+    else:
+        # ถ้ายังไม่ส่ง ให้แสดงฟอร์ม
         col1, col2 = st.columns(2)
         with col1:
             st.info(f"📍 โต๊ะที่: {table_param}")
@@ -119,13 +103,9 @@ if points_param:
         st.markdown("<br>", unsafe_allow_html=True)
         
         with st.form("customer_form"):
-            st.markdown("### 📱 กรุณากรอกเบอร์โทรศัพท์สมาชิก")
-            
+            st.markdown("### 📱 กรุณากรอกเบอร์โทรศัพท์")
             phone = st.text_input("เบอร์โทรศัพท์", placeholder="เช่น 0812345678", label_visibility="collapsed")
-            
             st.markdown("<br>", unsafe_allow_html=True)
-            
-            # ปุ่มกด
             submitted = st.form_submit_button("✅ ยืนยันการสะสมแต้ม", use_container_width=True)
             
             if submitted:
@@ -136,9 +116,10 @@ if points_param:
                         timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
                         sheet.append_row([timestamp, table_param, phone, points_param, "รอตรวจสอบ"])
                         
-                        st.balloons()
-                        st.success("✅ บันทึกคะแนนเรียบร้อยแล้ว!")
-                        time.sleep(3)
+                        # บันทึกสถานะลง Session และ Rerun เพื่อเปลี่ยนหน้าจอทันที
+                        st.session_state.submitted = True
+                        st.session_state.last_phone = phone
+                        st.rerun() 
                     except Exception as e:
                         st.error(f"เกิดข้อผิดพลาด: {e}")
 
@@ -149,19 +130,25 @@ else:
     with st.sidebar:
         st.header("Login")
         password = st.text_input("รหัสผ่านร้าน", type="password")
+        
+        if password != "3457":
+            st.warning("🔒 กรุณาใส่รหัสผ่าน")
+            st.stop()
+            
         st.markdown("---")
+        # --- เมนูเปลี่ยนหน้า (ย้ายมาไว้ Sidebar เพื่อแก้ปัญหาหน้าเด้ง) ---
+        menu = st.radio("เมนูหลัก", ["🖨️ สร้าง QR Code", "📋 ตรวจสอบยอด"], index=0)
+        
+        st.markdown("---")
+        st.markdown("**ตั้งค่าลิงก์:**")
         base_url = st.text_input("URL ของเว็บนี้", value="https://loyalty.streamlit.app")
 
-    if password != "3457":
-        st.warning("กรุณาใส่รหัสผ่านร้าน")
-        st.stop()
-
-    tab1, tab2 = st.tabs(["🖨️ สร้าง QR Code", "📋 ตรวจสอบยอด"])
-
-    with tab1:
+    # --- หน้า 1: สร้าง QR Code ---
+    if menu == "🖨️ สร้าง QR Code":
         st.subheader("สร้าง QR ให้ลูกค้าสแกน")
-        col_a, col_b = st.columns(2)
+        st.info("ระบุคะแนนและเลขโต๊ะ แล้วกดสร้าง QR")
         
+        col_a, col_b = st.columns(2)
         with col_a:
             pts = st.number_input("คะแนน (Points)", min_value=0, value=0, step=10)
         with col_b:
@@ -179,24 +166,31 @@ else:
             st.image(img.get_image(), width=300)
             st.success(f"QR โต๊ะ {tbl} ({pts} แต้ม) เสร็จแล้ว")
 
-    with tab2:
+    # --- หน้า 2: ตรวจสอบยอด ---
+    elif menu == "📋 ตรวจสอบยอด":
         st.subheader("รายการรอยืนยัน")
-        if st.button("🔄 รีเฟรชข้อมูล (ล้าง Cache)"):
-            st.cache_resource.clear()
-            st.rerun()
+        
+        col_btn1, col_btn2 = st.columns([1, 4])
+        with col_btn1:
+            if st.button("🔄 รีเฟรชข้อมูล"):
+                st.cache_resource.clear()
+                st.rerun()
 
         try:
+            # ใช้ get_all_values เพื่อความชัวร์เรื่อง Format
             raw_data = sheet.get_all_values()
             
             if len(raw_data) > 1:
                 headers = raw_data[0]
                 rows = raw_data[1:]
                 df = pd.DataFrame(rows, columns=headers)
+                # ลบช่องว่างหัวตาราง
                 df.columns = [c.strip() for c in df.columns]
                 
                 status_col = next((c for c in df.columns if c.lower() == 'status'), None)
                 
                 if status_col:
+                    # กรองเอาเฉพาะที่ยังไม่ TRUE
                     pending = df[df[status_col].astype(str).str.upper() != 'TRUE'].copy()
                     
                     if not pending.empty:
@@ -212,22 +206,27 @@ else:
                         )
                         
                         if st.button("✅ บันทึกรายการที่เลือก"):
-                            to_process = edited[edited['Approved'] == True]
-                            count = 0
-                            for index, row in to_process.iterrows():
-                                ts_val = row.get('Timestamp')
-                                try:
-                                    cell = sheet.find(str(ts_val), in_column=1)
-                                    if cell:
-                                        sheet.update_cell(cell.row, 5, "TRUE")
-                                        count += 1
-                                except:
-                                    pass
-                                    
-                            st.success(f"บันทึกแล้ว {count} รายการ")
-                            time.sleep(1)
-                            st.cache_resource.clear()
-                            st.rerun()
+                            with st.spinner("กำลังบันทึกข้อมูล..."):
+                                to_process = edited[edited['Approved'] == True]
+                                count = 0
+                                for index, row in to_process.iterrows():
+                                    ts_val = row.get('Timestamp')
+                                    try:
+                                        # หาตำแหน่ง row โดยใช้ Timestamp
+                                        cell = sheet.find(str(ts_val), in_column=1)
+                                        if cell:
+                                            # อัปเดต Column Status (คอลัมน์ที่ 5)
+                                            sheet.update_cell(cell.row, 5, "TRUE")
+                                            count += 1
+                                    except:
+                                        pass
+                                
+                                # --- รอ Google Sheet อัปเดตแป๊บนึง ---
+                                time.sleep(2) 
+                                
+                                st.success(f"บันทึกเรียบร้อย {count} รายการ")
+                                st.cache_resource.clear() # ล้าง Cache ข้อมูลเก่า
+                                st.rerun() # โหลดหน้าใหม่
                     else:
                         st.info("✅ ไม่มียอดค้าง ตรวจสอบครบแล้ว")
                 else:
@@ -237,6 +236,3 @@ else:
 
         except Exception as e:
             st.error(f"Error: {e}")
-
-
-
