@@ -45,7 +45,7 @@ table_param = query_params.get("table", "-")
 
 # --- 🟢 โหมดลูกค้า (Customer) ---
 if points_param:
-    # CSS ตกแต่ง (เหมือนเดิม)
+    # CSS ตกแต่ง
     st.markdown("""
         <style>
         .stApp { background-color: #FFFFFF !important; }
@@ -80,48 +80,43 @@ if points_param:
     st.markdown("<h1>🍃 Nami Member</h1>", unsafe_allow_html=True)
     st.write("---")
 
-    # --- เช็ค Session State ว่าเคยส่งไปหรือยัง ---
-    if 'submitted' not in st.session_state:
-        st.session_state.submitted = False
-
-    # ถ้าส่งไปแล้ว ให้แสดงหน้าขอบคุณ (และซ่อนฟอร์ม)
-    if st.session_state.submitted:
-        st.balloons()
-        st.success("✅ บันทึกข้อมูลสำเร็จ!")
-        st.info("ขอบคุณที่ใช้บริการครับ")
-        st.markdown(f"**เบอร์:** {st.session_state.get('last_phone', '-')}")
-        st.markdown(f"**ได้รับ:** {points_param} แต้ม")
+    # แสดงฟอร์ม
+    col1, col2 = st.columns(2)
+    with col1:
+        st.info(f"📍 โต๊ะที่: {table_param}")
+    with col2:
+        st.info(f"🎁 คะแนน: {points_param} แต้ม")
     
-    else:
-        # ถ้ายังไม่ส่ง ให้แสดงฟอร์ม
-        col1, col2 = st.columns(2)
-        with col1:
-            st.info(f"📍 โต๊ะที่: {table_param}")
-        with col2:
-            st.info(f"🎁 คะแนน: {points_param} แต้ม")
-        
+    st.markdown("<br>", unsafe_allow_html=True)
+    
+    with st.form("customer_form"):
+        st.markdown("### 📱 กรุณากรอกเบอร์โทรศัพท์")
+        phone = st.text_input("เบอร์โทรศัพท์", placeholder="เช่น 0812345678", label_visibility="collapsed")
         st.markdown("<br>", unsafe_allow_html=True)
+        submitted = st.form_submit_button("✅ ยืนยันการสะสมแต้ม", use_container_width=True)
         
-        with st.form("customer_form"):
-            st.markdown("### 📱 กรุณากรอกเบอร์โทรศัพท์")
-            phone = st.text_input("เบอร์โทรศัพท์", placeholder="เช่น 0812345678", label_visibility="collapsed")
-            st.markdown("<br>", unsafe_allow_html=True)
-            submitted = st.form_submit_button("✅ ยืนยันการสะสมแต้ม", use_container_width=True)
-            
-            if submitted:
-                if len(phone) < 9 or not phone.isdigit():
-                    st.error("❌ กรุณากรอกเบอร์โทรศัพท์ให้ถูกต้อง (ตัวเลขเท่านั้น)")
-                else:
-                    try:
-                        timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
-                        sheet.append_row([timestamp, table_param, phone, points_param, "รอตรวจสอบ"])
-                        
-                        # บันทึกสถานะลง Session และ Rerun เพื่อเปลี่ยนหน้าจอทันที
-                        st.session_state.submitted = True
-                        st.session_state.last_phone = phone
-                        st.rerun() 
-                    except Exception as e:
-                        st.error(f"เกิดข้อผิดพลาด: {e}")
+        if submitted:
+            if len(phone) < 9 or not phone.isdigit():
+                st.error("❌ กรุณากรอกเบอร์โทรศัพท์ให้ถูกต้อง (ตัวเลขเท่านั้น)")
+            else:
+                try:
+                    timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
+                    sheet.append_row([timestamp, table_param, phone, points_param, "รอตรวจสอบ"])
+                    
+                    st.balloons()
+                    st.success("✅ บันทึกข้อมูลสำเร็จ!")
+                    st.info("ขอบคุณที่ใช้บริการครับ")
+                    
+                    # --- แก้ปัญหาลูกค้า Refresh แล้วส่งซ้ำ ---
+                    # ล้างค่า URL ทิ้งทันที (ทำให้ browser ลืมว่าเคยมี ?points=100)
+                    st.query_params.clear()
+                    
+                    # หน่วงเวลา 3 วินาทีให้ลูกค้าอ่านข้อความ แล้วรีเฟรชหน้าจอ (จะเด้งไปหน้า Login)
+                    time.sleep(3)
+                    st.rerun()
+                    
+                except Exception as e:
+                    st.error(f"เกิดข้อผิดพลาด: {e}")
 
 # --- 🔵 โหมดร้านค้า (Admin) ---
 else:
@@ -136,7 +131,6 @@ else:
             st.stop()
             
         st.markdown("---")
-        # --- เมนูเปลี่ยนหน้า (ย้ายมาไว้ Sidebar เพื่อแก้ปัญหาหน้าเด้ง) ---
         menu = st.radio("เมนูหลัก", ["🖨️ สร้าง QR Code", "📋 ตรวจสอบยอด"], index=0)
         
         st.markdown("---")
@@ -170,28 +164,32 @@ else:
     elif menu == "📋 ตรวจสอบยอด":
         st.subheader("รายการรอยืนยัน")
         
-        col_btn1, col_btn2 = st.columns([1, 4])
-        with col_btn1:
-            if st.button("🔄 รีเฟรชข้อมูล"):
-                st.cache_resource.clear()
-                st.rerun()
+        if st.button("🔄 รีเฟรชข้อมูล"):
+            st.cache_resource.clear()
+            st.rerun()
 
         try:
-            # ใช้ get_all_values เพื่อความชัวร์เรื่อง Format
+            # ใช้ get_all_values ดึงข้อมูลดิบทั้งหมด
             raw_data = sheet.get_all_values()
             
             if len(raw_data) > 1:
                 headers = raw_data[0]
                 rows = raw_data[1:]
+                
+                # สร้าง DataFrame
                 df = pd.DataFrame(rows, columns=headers)
-                # ลบช่องว่างหัวตาราง
-                df.columns = [c.strip() for c in df.columns]
+                df.columns = [c.strip() for c in df.columns] # ลบช่องว่างหัวตาราง
                 
-                status_col = next((c for c in df.columns if c.lower() == 'status'), None)
+                status_col_name = next((c for c in df.columns if c.lower() == 'status'), None)
                 
-                if status_col:
+                if status_col_name:
+                    # หา Column Index ของ Status (เพื่อเอาไปใช้ update_cell)
+                    # +1 เพราะ gspread นับคอลัมน์เริ่มที่ 1
+                    status_col_index = df.columns.get_loc(status_col_name) + 1
+                    
                     # กรองเอาเฉพาะที่ยังไม่ TRUE
-                    pending = df[df[status_col].astype(str).str.upper() != 'TRUE'].copy()
+                    # หมายเหตุ: index ของ pandas จะยังคงเป็นเลขแถวเดิมจาก raw_data (เริ่ม 0, 1, 2...)
+                    pending = df[df[status_col_name].astype(str).str.upper() != 'TRUE'].copy()
                     
                     if not pending.empty:
                         pending.insert(0, "Approved", False)
@@ -209,28 +207,30 @@ else:
                             with st.spinner("กำลังบันทึกข้อมูล..."):
                                 to_process = edited[edited['Approved'] == True]
                                 count = 0
+                                
+                                # วนลูปอัปเดตข้อมูล
                                 for index, row in to_process.iterrows():
-                                    ts_val = row.get('Timestamp')
+                                    # --- แก้ไขจุดสำคัญ (ใช้ Index คำนวณแถวโดยตรง) ---
+                                    # index คือลำดับใน list rows เดิม
+                                    # แถวใน Sheet = (index) + 2 
+                                    # (+1 เพราะ rows เริ่มหลัง header, +1 เพราะ sheet เริ่มนับ 1)
+                                    row_number_in_sheet = index + 2
+                                    
                                     try:
-                                        # หาตำแหน่ง row โดยใช้ Timestamp
-                                        cell = sheet.find(str(ts_val), in_column=1)
-                                        if cell:
-                                            # อัปเดต Column Status (คอลัมน์ที่ 5)
-                                            sheet.update_cell(cell.row, 5, "TRUE")
-                                            count += 1
-                                    except:
-                                        pass
+                                        # อัปเดตช่อง Status โดยตรง ไม่ต้องค้นหา
+                                        sheet.update_cell(row_number_in_sheet, status_col_index, "TRUE")
+                                        count += 1
+                                    except Exception as e:
+                                        st.error(f"Error saving row {row_number_in_sheet}: {e}")
                                 
-                                # --- รอ Google Sheet อัปเดตแป๊บนึง ---
-                                time.sleep(2) 
-                                
+                                time.sleep(2) # รอ Sheet อัปเดต
                                 st.success(f"บันทึกเรียบร้อย {count} รายการ")
-                                st.cache_resource.clear() # ล้าง Cache ข้อมูลเก่า
-                                st.rerun() # โหลดหน้าใหม่
+                                st.cache_resource.clear()
+                                st.rerun()
                     else:
                         st.info("✅ ไม่มียอดค้าง ตรวจสอบครบแล้ว")
                 else:
-                    st.error("ไม่พบหัวตาราง Status")
+                    st.error("ไม่พบหัวตารางชื่อ Status")
             else:
                 st.warning("ยังไม่มีข้อมูล")
 
